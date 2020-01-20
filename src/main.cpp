@@ -29,7 +29,8 @@ int main() {
   // 0 = left, 1 = middle, 2 = right
   int lane = 1;
 
-  double ref_vel = 49.5; // mph
+#define MAX_REF_VEL 49.5
+  double ref_vel = 0; // mph 49.5; // mph
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -97,6 +98,41 @@ int main() {
           vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
 
           int prev_size = previous_path_x.size();
+
+
+	  // Avoid hitting car in front
+	  // Do this in Frenet coordinates, since it's easier
+	  if (prev_size > 0) {
+	    car_s = end_path_s;
+	  }
+
+	  bool too_close = false;
+          
+	  // Find ref_v to use
+	  for (int i = 0; i < sensor_fusion.size(); ++i) {
+	    // Car is in my lane
+	    float d = sensor_fusion[i][6];
+	    if (d < (2+4*lane+2) && d > (2+4*lane-2)) {
+	      double vx = sensor_fusion[i][3];
+	      double vy = sensor_fusion[i][4];
+	      double check_speed = sqrt(vx*vx + vy*vy);
+	      double check_car_s = sensor_fusion[i][5];
+	      // If using previous points, can project s value out.
+	      check_car_s += static_cast<double>(prev_size*.02*check_speed);
+	      // Check s values greater than mine and s gap
+	      if (check_car_s > car_s && ((check_car_s - car_s) < 30)) {
+		// Do some logic here, lower reference velocity so we don't crash
+		// into the car in front of us, could also try to change lanes.
+		too_close = true;
+	      }
+	    } 
+	  }
+
+	  if (too_close) {
+	    ref_vel -= .224;
+	  } else if (ref_vel < 49.5) {
+	    ref_vel += .224;
+	  }
 
 	  // Create a list of widely spaced waypoints, evenly spaced at 30m.
 	  // Later we will interpolate these waypoints with a spline
@@ -206,23 +242,6 @@ int main() {
 	  }
 
 	  json msgJson;
-
-          /**
-           * TODO: define a path made up of (x,y) points that the car will visit
-           *   sequentially every .02 seconds
-           */
-
-//         double dist_inc = 0.5;
-//
-//	 // Stay in the lane
-//         for (int i = 0; i < 50; ++i) {
-//             // (i + 1) ensures that the car transitions at step 0
-//      	     double next_s = car_s + (i + 1) * dist_inc;
-//	     double next_d = 6;
-//	     vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-//	     next_x_vals.push_back(xy[0]);
-// 	     next_y_vals.push_back(xy[1]);
-//         }
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
