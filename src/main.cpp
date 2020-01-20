@@ -124,6 +124,9 @@ int main() {
 		// Do some logic here, lower reference velocity so we don't crash
 		// into the car in front of us, could also try to change lanes.
 		too_close = true;
+		if (lane > 0) {
+		  lane = 0;
+		}
 	      }
 	    } 
 	  }
