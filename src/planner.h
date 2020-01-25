@@ -1,8 +1,13 @@
 #pragma once 
 
+#include <map>
 #include <vector>
 
+#include "json.hpp"
+
 using std::vector;
+
+using prev_path_t = nlohmann::basic_json<std::map, std::vector, std::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long long, unsigned long long, double, std::allocator, nlohmann::adl_serializer>;
 
 class Planner {
 
@@ -16,6 +21,20 @@ public:
 		double max_velocity,
 		int init_lane,
 		double init_velocity
+	);
+
+std::tuple<vector<double>, vector<double>> plan(
+		double car_x,
+		double car_y,
+		double car_s,
+		double car_d,
+		double car_yaw,
+		double car_speed,
+		prev_path_t previous_path_x,
+		prev_path_t previous_path_y,
+		double end_path_s,
+		double end_path_d,
+		vector<vector<double>> sensor_fusion
 	);
 
 private:
