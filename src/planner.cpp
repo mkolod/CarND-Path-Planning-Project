@@ -66,14 +66,20 @@ std::tuple<vector<double>, vector<double>> Planner::plan(
               // If using previous points, can project s value out.
               check_car_s += static_cast<double>(prev_size * .02 * check_speed);
               // Check s values greater than mine and s gap
-              if (check_car_s > car_s && ((check_car_s - car_s) < 30)) {
+              
+              // double safe_distance = 30;
+              double safe_distance = physical_braking_distance(mph_to_mps(velocity));
+              std::cout << "Safe distance: " << safe_distance << std::endl;
+
+
+              if (check_car_s > car_s && ((check_car_s - car_s) < safe_distance)) {
                 // Do some logic here, lower reference velocity so we don't
                 // crash
                 // into the car in front of us, could also try to change lanes.
                 too_close = true;
-                if (lane > 0) {
-                  lane = 0;
-                }
+                // if (lane > 0) {
+                //   lane = 0;
+                // }
               }
             }
           }
