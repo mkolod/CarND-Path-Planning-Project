@@ -47,6 +47,13 @@ vector<Car> closest_cars_in_lane(
 	vector<vector<double>> sensor_fusion
 );
 
+int fastest_safe_lane(
+	int current_lane,
+	double car_s,
+	int prev_size,
+	vector<vector<double>> sensor_fusion
+);
+
     const vector<double> map_waypoints_x;
 	const vector<double> map_waypoints_y;
 	const vector<double> map_waypoints_s;
@@ -55,4 +62,6 @@ vector<Car> closest_cars_in_lane(
 	const double max_velocity;
 	int lane;
 	double velocity;
+	bool lane_change_in_progress;
+	int steps_since_lane_change_start;
 };
