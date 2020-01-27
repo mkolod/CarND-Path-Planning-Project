@@ -1,5 +1,6 @@
 #pragma once 
 
+#include <chrono>
 #include <map>
 #include <vector>
 
@@ -63,5 +64,5 @@ int fastest_safe_lane(
 	int lane;
 	double velocity;
 	bool lane_change_in_progress;
-	int steps_since_lane_change_start;
+	std::chrono::steady_clock::time_point time_since_lane_change_start;
 };

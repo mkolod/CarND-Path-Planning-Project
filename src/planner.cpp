@@ -88,7 +88,7 @@ int Planner::fastest_safe_lane(
 ) {
 
   int best_lane = current_lane;
-  double best_speed = 0.0;
+  double best_speed = velocity;
 
   vector<int> lanes;
   switch (current_lane) {
@@ -106,20 +106,22 @@ int Planner::fastest_safe_lane(
   for (const auto& lane : lanes) {
     vector<Car> cars_in_lane = closest_cars_in_lane(lane, car_s, prev_size, sensor_fusion);
     bool safe = true;
-    double speed = 0.0;
+    double speed = 49.5;
     int counter = 0;
     for (const auto& car: cars_in_lane) {
       double safe_distance = physical_braking_distance(car.speed);
+      double closest_front = 1e50;
       if (abs(car_s - car.s) < safe_distance) {
         safe = false;
+        continue;
       }
-      if (car.s > car_s && (car.s - car_s) < 100) {
-        speed += mps_to_mph(car.speed);
-        counter += 1;
+      if (car.s > car_s) {
+        double diff = car.s - car_s;
+        if (diff < closest_front) {
+          closest_front = diff;
+          speed = mps_to_mph(car.speed);
+        }
       }
-    }
-    if (counter > 0) {
-        speed /= counter;
     }
     if (safe && (speed > best_speed)) {
       best_speed = speed;
@@ -200,16 +202,18 @@ Planner::plan(double car_x, double car_y, double car_s, double car_d,
       if (!lane_change_in_progress) {
         lane_change_in_progress = true;
         lane = best_lane;
-        steps_since_lane_change_start = 0;
+        time_since_lane_change_start = std::chrono::steady_clock::now();
       } else if (lane_change_in_progress) {
-        if (steps_since_lane_change_start > 500) {
+        auto now = std::chrono::steady_clock::now();
+        auto duration =  now - time_since_lane_change_start;
+        auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+        std::cout << "Time since lane change begin = " << duration_sec << std::endl;
+        if (duration_sec > 5) {
           lane_change_in_progress = false;
         }
       }
     }
   }
-
-  steps_since_lane_change_start += prev_size;
 
 /*
 int fastest_safe_lane(
