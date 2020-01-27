@@ -5,6 +5,11 @@ double mph_to_mps(double mph) {
 	return mph * 0.44704;
 }
 
+// Convert meters per second to miles per hous
+double mps_to_mph(double mps) {
+	return mps * 2.23694;
+}
+
 // Braking distance based on physics
 // See here: https://en.wikipedia.org/wiki/Braking_distance
 // Velocity is in m/s

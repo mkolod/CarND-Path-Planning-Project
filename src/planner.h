@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "json.hpp"
+#include "car.h"
 
 using std::vector;
 
@@ -23,7 +24,7 @@ public:
 		double init_velocity
 	);
 
-std::tuple<vector<double>, vector<double>> plan(
+std::pair<vector<double>, vector<double>> plan(
 		double car_x,
 		double car_y,
 		double car_s,
@@ -38,6 +39,14 @@ std::tuple<vector<double>, vector<double>> plan(
 	);
 
 private:
+
+vector<Car> closest_cars_in_lane(
+	int lane,
+	double car_s,
+	int prev_size,
+	vector<vector<double>> sensor_fusion
+);
+
     const vector<double> map_waypoints_x;
 	const vector<double> map_waypoints_y;
 	const vector<double> map_waypoints_s;

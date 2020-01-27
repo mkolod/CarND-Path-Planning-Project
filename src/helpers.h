@@ -11,6 +11,9 @@ using std::vector;
 // Convert miles per hour to meters per second
 double mph_to_mps(double mph);
 
+// Convert meters per second to miles per hous
+double mps_to_mph(double mps);
+
 // Braking distance based on physics
 // See here: https://en.wikipedia.org/wiki/Braking_distance
 // Velocity is in m/s
