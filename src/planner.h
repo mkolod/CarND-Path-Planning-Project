@@ -65,4 +65,5 @@ int fastest_safe_lane(
 	double velocity;
 	bool lane_change_in_progress;
 	std::chrono::steady_clock::time_point time_since_lane_change_start;
+	std::chrono::steady_clock::time_point sim_start_time;
 };

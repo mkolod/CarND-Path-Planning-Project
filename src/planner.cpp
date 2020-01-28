@@ -18,7 +18,10 @@ Planner::Planner(vector<double> map_waypoints_x, vector<double> map_waypoints_y,
     : map_waypoints_x(map_waypoints_x), map_waypoints_y(map_waypoints_y),
       map_waypoints_s(map_waypoints_s), map_waypoints_dx(map_waypoints_dx),
       map_waypoints_dy(map_waypoints_dy), max_velocity(max_velocity),
-      lane(init_lane), velocity(init_velocity) {}
+      lane(init_lane), velocity(init_velocity), 
+      time_since_lane_change_start(std::chrono::steady_clock::now()),
+      sim_start_time(std::chrono::steady_clock::now()),
+      lane_change_in_progress(true) {}
 
 vector<Car>
 Planner::closest_cars_in_lane(int req_lane, double car_s, int prev_size,
@@ -89,6 +92,8 @@ int Planner::fastest_safe_lane(
 
   int best_lane = current_lane;
   double best_speed = velocity;
+  bool current_lane_safe = true;
+
 
   vector<int> lanes;
   switch (current_lane) {
@@ -107,16 +112,17 @@ int Planner::fastest_safe_lane(
     vector<Car> cars_in_lane = closest_cars_in_lane(lane, car_s, prev_size, sensor_fusion);
     bool safe = true;
     double speed = 49.5;
-    int counter = 0;
     for (const auto& car: cars_in_lane) {
-      double safe_distance = physical_braking_distance(car.speed);
+      // double velocity, double reaction_time, double friction_coeff=0.7, double gravity=9.81
+      double safe_distance = total_braking_distance(car.speed, 0.5);
       double closest_front = 1e50;
-      if (abs(car_s - car.s) < safe_distance) {
+      double total_s = car.s + prev_size * .02 * car.speed;
+      if (abs(car_s - total_s) < safe_distance) {
         safe = false;
         continue;
       }
-      if (car.s > car_s) {
-        double diff = car.s - car_s;
+      if (total_s > car_s) {
+        double diff = total_s - car_s;
         if (diff < closest_front) {
           closest_front = diff;
           speed = mps_to_mph(car.speed);
@@ -162,7 +168,7 @@ Planner::plan(double car_x, double car_y, double car_s, double car_d,
       check_car_s += static_cast<double>(prev_size * .02 * check_speed);
       // Check s values greater than mine and s gap
 
-      double safe_distance = physical_braking_distance(mph_to_mps(velocity));
+      double safe_distance = total_braking_distance(mph_to_mps(velocity), 0.5);
 
       if (check_car_s > car_s && ((check_car_s - car_s) < safe_distance)) {
         // Do some logic here, lower reference velocity so we don't
@@ -174,19 +180,6 @@ Planner::plan(double car_x, double car_y, double car_s, double car_d,
       }
     }
   }
-
-  // for (int l = 0; l < 3; ++l) {
-  //   std::cout << "Lane " << l << ". Closest cars: " << std::endl;
-  //   vector<Car> v = closest_cars_in_lane(l, car_s, prev_size, sensor_fusion);
-  //   for (const auto &elem : v) {
-  //     std::cout << "speed = " << mps_to_mph(elem.speed) << ", s = " << elem.s << ", ";
-  //     std::cout << "distance = " << abs(car_s - elem.s) << ", ";
-  //     std::cout << (elem.s < car_s ? "behind" : "in front");
-  //     std::cout << ", my_car_s = " << car_s << std::endl;
-  //   }
-  // }
-
-  // std::cout << "My velocity: " << velocity << std::endl;
 
   if (too_close) {
     velocity -= .224;
@@ -207,8 +200,10 @@ Planner::plan(double car_x, double car_y, double car_s, double car_d,
         auto now = std::chrono::steady_clock::now();
         auto duration =  now - time_since_lane_change_start;
         auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+        auto sim_duration = now - sim_start_time;
+        auto sim_duration_sec = std::chrono::duration_cast<std::chrono::seconds>(sim_duration).count();
         std::cout << "Time since lane change begin = " << duration_sec << std::endl;
-        if (duration_sec > 5) {
+        if (duration_sec > 5 && sim_duration_sec > 20) {
           lane_change_in_progress = false;
         }
       }
