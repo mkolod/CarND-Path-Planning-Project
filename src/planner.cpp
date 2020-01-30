@@ -23,64 +23,52 @@ Planner::Planner(vector<double> map_waypoints_x, vector<double> map_waypoints_y,
       sim_start_time(std::chrono::steady_clock::now()),
       lane_change_in_progress(true) {}
 
-vector<Car>
-Planner::closest_cars_in_lane(int req_lane, double car_s, int prev_size,
-                              vector<vector<double>> sensor_fusion) {
+// vector<Car>
+// Planner::closest_cars_in_lane(int req_lane, double car_s, int prev_size,
+//                               vector<vector<double>> sensor_fusion) {
 
-  vector<Car> in_front;
-  vector<Car> behind;
+//   vector<Car> in_front;
+//   vector<Car> behind;
 
-  for (int i = 0; i < sensor_fusion.size(); ++i) {
-    float d = sensor_fusion[i][6];
-    // If car is within the requested lane
-    if (d < (2 + 4 * req_lane + 2) && d > (2 + 4 * req_lane - 2)) {
-      double vx = sensor_fusion[i][3];
-      double vy = sensor_fusion[i][4];
-      double check_speed = sqrt(vx * vx + vy * vy);
-      double check_car_s = sensor_fusion[i][5];
+//   for (int i = 0; i < sensor_fusion.size(); ++i) {
+//     float d = sensor_fusion[i][6];
+//     // If car is within the requested lane
+//     if (d < (2 + 4 * req_lane + 2) && d > (2 + 4 * req_lane - 2)) {
+//       double vx = sensor_fusion[i][3];
+//       double vy = sensor_fusion[i][4];
+//       double check_speed = sqrt(vx * vx + vy * vy);
+//       double check_car_s = sensor_fusion[i][5];
 
-      check_car_s += static_cast<double>(prev_size * .02 * check_speed);
+//       check_car_s += static_cast<double>(prev_size * .02 * check_speed);
 
-      Car check_car(vx, vy, check_car_s);
-      if (check_car_s > car_s) {
-        in_front.push_back(check_car);
-      } else {
-        behind.push_back(check_car);
-      }
-    }
-  }
+//       Car check_car(vx, vy, check_car_s);
+//       if (check_car_s > car_s) {
+//         in_front.push_back(check_car);
+//       } else {
+//         behind.push_back(check_car);
+//       }
+//     }
+//   }
 
-  // Find the car with the smallest s in front
-  std::sort(in_front.begin(), in_front.end(),
-            [](const Car &lhs, const Car &rhs) { return lhs.s < rhs.s; });
-  // Find the car with the largest s in the back
-  std::sort(behind.begin(), behind.end(),
-            [](const Car &lhs, const Car &rhs) { return lhs.s > rhs.s; });
+//   // Find the car with the smallest s in front
+//   std::sort(in_front.begin(), in_front.end(),
+//             [](const Car &lhs, const Car &rhs) { return lhs.s < rhs.s; });
+//   // Find the car with the largest s in the back
+//   std::sort(behind.begin(), behind.end(),
+//             [](const Car &lhs, const Car &rhs) { return lhs.s > rhs.s; });
 
-  // std::cout << "\n### lane = " << req_lane << std::endl;
-  // std::cout << "Cars in front: " << std::endl;
-  // for (const auto& car : in_front) {
-  //   std::cout << car.s << " ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "Cars in back: " << std::endl;
-  // for (const auto& car : behind) {
-  //   std::cout << car.s << " ";
-  // }
-  // std::cout << "My car s = " << car_s << std::endl << std::endl;
+//   vector<Car> result;
 
-  vector<Car> result;
+//   if (behind.size() > 0) {
+//     result.push_back(behind[0]);
+//   }
 
-  if (behind.size() > 0) {
-    result.push_back(behind[0]);
-  }
+//   if (in_front.size() > 0) {
+//     result.push_back(in_front[0]);
+//   }
 
-  if (in_front.size() > 0) {
-    result.push_back(in_front[0]);
-  }
-
-  return result;
-}
+//   return result;
+// }
 
 
 int Planner::fastest_safe_lane(
@@ -91,7 +79,7 @@ int Planner::fastest_safe_lane(
 ) {
 
   int best_lane = current_lane;
-  double best_speed = velocity;
+  double best_speed = mph_to_mps(velocity);
   bool current_lane_safe = true;
 
 
@@ -109,31 +97,83 @@ int Planner::fastest_safe_lane(
   } 
 
   for (const auto& lane : lanes) {
-    vector<Car> cars_in_lane = closest_cars_in_lane(lane, car_s, prev_size, sensor_fusion);
-    bool safe = true;
-    double speed = 49.5;
-    for (const auto& car: cars_in_lane) {
-      // double velocity, double reaction_time, double friction_coeff=0.7, double gravity=9.81
-      double safe_distance = total_braking_distance(car.speed, 0.5);
-      double closest_front = 1e50;
-      double total_s = car.s + prev_size * .02 * car.speed;
-      if (abs(car_s - total_s) < safe_distance) {
-        safe = false;
-        continue;
-      }
-      if (total_s > car_s) {
-        double diff = total_s - car_s;
-        if (diff < closest_front) {
-          closest_front = diff;
-          speed = mps_to_mph(car.speed);
+    double best_curr_speed = 0;
+    double shortest_distance = 1e50;
+    // bool first_car_spotted = false;
+     for (int i = 0; i < sensor_fusion.size(); ++i) {
+       // Car is in my lane
+       double d = sensor_fusion[i][6];
+       if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2)) {
+         double vx = sensor_fusion[i][3];
+         double vy = sensor_fusion[i][4];
+         double check_speed = sqrt(vx * vx + vy * vy);
+         double check_car_s = sensor_fusion[i][5];
+         // If using previous points, can project s value out.
+         check_car_s += static_cast<double>(prev_size * .02 * check_speed);
+         // Check s values greater than mine and s gap
+
+        double safe_distance = total_braking_distance(mph_to_mps(velocity), 0.1);
+        if (check_car_s > car_s && ((check_car_s - car_s) < safe_distance)) {
+          // Do some logic here, lower reference velocity so we don't
+          // crash
+          // into the car in front of us, could also try to change lanes.
+          if (current_lane == lane) {
+            current_lane_safe = false;
+          }
+          continue;
+        } else if (check_car_s > car_s && ((check_car_s - car_s) >= safe_distance)) {
+          if (abs(check_car_s - car_s) < shortest_distance) {
+            shortest_distance = abs(check_car_s - car_s);
+            if (check_speed > best_curr_speed) {
+              best_curr_speed = check_speed;
+            }
+          }
+        } else if (check_car_s < car_s && (car_s - check_car_s) < safe_distance) {
+          continue;
         }
       }
     }
-    if (safe && (speed > best_speed)) {
-      best_speed = speed;
+    // if (best_curr_speed == 0) {
+    //   best_curr_speed = mps_to_mph(49.5);
+    // }
+    if (best_curr_speed > best_speed) {
+      best_speed = best_curr_speed;
       best_lane = lane;
     }
   }
+
+  if (!current_lane_safe) {
+    velocity -= .224;
+  } else if (current_lane_safe && velocity < 49.5) {
+    velocity += .224;
+  }
+
+
+  //   vector<Car> cars_in_lane = closest_cars_in_lane(lane, car_s, prev_size, sensor_fusion);
+  //   bool safe = true;
+  //   double speed = 49.5;
+  //   for (const auto& car: cars_in_lane) {
+  //     // double velocity, double reaction_time, double friction_coeff=0.7, double gravity=9.81
+  //     double safe_distance = total_braking_distance(car.speed, 0.5);
+  //     double closest_front = 1e50;
+  //     double total_s = car.s + prev_size * .02 * car.speed;
+  //     if (abs(car_s - total_s) < safe_distance) {
+  //       safe = false;
+  //       continue;
+  //     }
+  //     if (total_s > car_s) {
+  //       double diff = total_s - car_s;
+  //       if (diff < closest_front) {
+  //         closest_front = diff;
+  //         speed = mps_to_mph(car.speed);
+  //       }
+  //     }
+  //   }
+  //   if (safe && (speed > best_speed)) {
+  //     best_speed = speed;
+  //     best_lane = lane;
+  //   }
+  // }
   return best_lane;
 }
 
@@ -153,42 +193,8 @@ Planner::plan(double car_x, double car_y, double car_s, double car_d,
     car_s = end_path_s;
   }
 
-  bool too_close = false;
-
-  // Find ref_v to use
-  for (int i = 0; i < sensor_fusion.size(); ++i) {
-    // Car is in my lane
-    float d = sensor_fusion[i][6];
-    if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2)) {
-      double vx = sensor_fusion[i][3];
-      double vy = sensor_fusion[i][4];
-      double check_speed = sqrt(vx * vx + vy * vy);
-      double check_car_s = sensor_fusion[i][5];
-      // If using previous points, can project s value out.
-      check_car_s += static_cast<double>(prev_size * .02 * check_speed);
-      // Check s values greater than mine and s gap
-
-      double safe_distance = total_braking_distance(mph_to_mps(velocity), 0.5);
-
-      if (check_car_s > car_s && ((check_car_s - car_s) < safe_distance)) {
-        // Do some logic here, lower reference velocity so we don't
-        // crash
-        // into the car in front of us, could also try to change lanes.
-        too_close = true;
-        std::cout << "Distance = " << abs(check_car_s - car_s)
-                  << ", safe distance = " << safe_distance << std::endl;
-      }
-    }
-  }
-
-  if (too_close) {
-    velocity -= .224;
-  } else if (velocity < 49.5) {
-    velocity += .224;
-  }
-
   // Use 49.0 to allow for margin of error
-  if (velocity < 49.0) {
+  // if (velocity < 49.0) {
     bool can_change_lane = true;
     int best_lane = fastest_safe_lane(lane, car_s, prev_size, sensor_fusion);
     if (best_lane != lane) {
@@ -203,20 +209,12 @@ Planner::plan(double car_x, double car_y, double car_s, double car_d,
         auto sim_duration = now - sim_start_time;
         auto sim_duration_sec = std::chrono::duration_cast<std::chrono::seconds>(sim_duration).count();
         std::cout << "Time since lane change begin = " << duration_sec << std::endl;
-        if (duration_sec > 5 && sim_duration_sec > 20) {
+        if (duration_sec > 20 && sim_duration_sec > 30) {
           lane_change_in_progress = false;
         }
       }
     }
-  }
-
-/*
-int fastest_safe_lane(
-  int current_lane,
-  double car_s,
-  int prev_size,
-  vector<vector<double>> sensor_fusion
-*/
+  // }
 
   // Create a list of widely spaced waypoints, evenly spaced at 30m.
   // Later we will interpolate these waypoints with a spline
