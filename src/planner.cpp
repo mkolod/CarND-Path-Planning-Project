@@ -57,18 +57,6 @@ Planner::closest_cars_in_lane(int req_lane, double car_s, int prev_size,
   std::sort(behind.begin(), behind.end(),
             [](const Car &lhs, const Car &rhs) { return lhs.s > rhs.s; });
 
-  // std::cout << "\n### lane = " << req_lane << std::endl;
-  // std::cout << "Cars in front: " << std::endl;
-  // for (const auto& car : in_front) {
-  //   std::cout << car.s << " ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "Cars in back: " << std::endl;
-  // for (const auto& car : behind) {
-  //   std::cout << car.s << " ";
-  // }
-  // std::cout << "My car s = " << car_s << std::endl << std::endl;
-
   vector<Car> result;
 
   if (behind.size() > 0) {
@@ -209,14 +197,6 @@ Planner::plan(double car_x, double car_y, double car_s, double car_d,
       }
     }
   }
-
-/*
-int fastest_safe_lane(
-  int current_lane,
-  double car_s,
-  int prev_size,
-  vector<vector<double>> sensor_fusion
-*/
 
   // Create a list of widely spaced waypoints, evenly spaced at 30m.
   // Later we will interpolate these waypoints with a spline
